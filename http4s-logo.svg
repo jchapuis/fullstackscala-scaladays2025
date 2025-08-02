@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:figma="http://www.figma.com/figma/ns" version="1.1" viewBox="0 0 443.1 512">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #e38313;
+      }
+
+      .st1 {
+        fill: #ff8f00;
+      }
+
+      .st2 {
+        fill: #fff;
+      }
+
+      .st3 {
+        fill: #ff9d1d;
+      }
+    </style>
+  </defs>
+  <g id="Canvas" figma:type="canvas">
+    <g id="http4s-logo" figma:type="frame">
+      <g id="Top" figma:type="vector">
+        <path id="path0_fill" class="st1" d="M442.8,127.8L221.4.5,0,127.8l221.4,128.4,221.4-128.4Z"/>
+      </g>
+      <g id="Right" figma:type="vector">
+        <path id="path1_fill" class="st0" d="M442.8,383.6V127.8s-221.4,128-221.4,128v255.6s221.4-127.8,221.4-127.8Z"/>
+      </g>
+      <g id="Left" figma:type="vector">
+        <path id="path2_fill" class="st3" d="M0,383.6V127.8l221.4,128v255.6S0,383.6,0,383.6Z"/>
+      </g>
+      <g id="S" figma:type="vector">
+        <path id="path3_fill" class="st2" d="M249.1,463.5v-63.9l55.3-32v-127.8l110.7-63.9v63.9l-55.3,32v127.8l-110.7,63.9Z"/>
+      </g>
+      <g id="_x34_" figma:type="vector">
+        <path id="path4_fill" class="st2" d="M193.7,271.8l-55.3-32v63.9l-55.3-32v-63.9l-55.3-32v127.8l55.3,32,55.3,32v63.9l55.3,32v-191.7Z"/>
+      </g>
+      <g id="H" figma:type="vector">
+        <path id="path5_fill" class="st2" d="M166,64.1l-110.7,63.9,55.3,32,55.3-32,55.3,32-55.3,32,55.3,32,166-95.9-55.3-32-55.3,32-55.3-32,55.3-32-55.3-32-55.3,32Z"/>
+      </g>
+    </g>
+  </g>
+</svg>
