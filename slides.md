@@ -32,7 +32,7 @@ autoscale: true
 ## Who _**wouldn't**_ want... 🤩
 
  - 🧑‍🤝‍🧑 _Type-based_ team alignment
-- 🦺 Higher bus factor 
+ - 🦺 Higher bus factor 
  - 🔹 Smaller & leaner codebase
  - 👣 Reduced overall dependency surface
  - 💄 Cutting-edge UX
@@ -684,7 +684,7 @@ class MapLibreAdapter(using Locale, ...):
     )
 ```
 
-🪝 hook it in the DOM:
+🪝 hook it in the laminar tree:
 
 ```scala
 div(
@@ -703,19 +703,14 @@ Those precise update semantics avoid need for VDOM thanks to FRP -->
 
 ---
 ## **Service** abstraction  
-[.code-highlight: 1-5]
-[.code-highlight: 6-8]
 
 ```scala
-package com.terasol.exomap.client.services
-
-import com.raquo.airstream.core.EventStream
-import com.terasol.exomap.shared.i18n.I18n
-import com.terasol.exomap.shared.model.Language
-
 trait I18nService:
   def retrieveTranslations(language: Language): EventStream[Translations]
 ```
+
+^ - I showed earlier how we retrieve translations when there is a language change
+ - as we briefly saw earlier, this definition allows for unit testing
 
 ---
 ## *Sstp* **fetch-based** implementation  
@@ -739,9 +734,9 @@ class ApiClientBasedI18Service extends I18nService with I18nEndpoints:
 ```
 
 ^
-- mixes in endpoints definition so we can "interpret" it
-- event stream from future
-- we interpret the endpoint into an http client using sttp, using a fetch backend
+- now in terms of its actual implementation, you'll also remember we defined endpoints with tapir
+- so our implementation mixes in the endpoint definition so that 
+- we can "interpret" it using sttp http client, using a fetch backend
 
 --- 
 ## Backend: typelevel stack 🐱 
@@ -751,10 +746,99 @@ class ApiClientBasedI18Service extends I18nService with I18nEndpoints:
  - proven, performant
  - `IO`: a control-freak's dream 🤓
  - `Http4s` with `http4-netty` backend for HTTP2 support
- - `fs2`-driven tile server with deep cancellation 
+ - `fs2`-driven tile server with deep cancellation combined with `doobie` DB driver
+
+^ - Ok, so this gets us closer to the backend
+ - we fuel this using the typelevel stack
+ - it's been around for a while now and is in production in many places
+ - cats-effect and the IO monad gives you full control, at the cost of a certain complexity for sure
+ - for the web server, it's http4s and since i needed reliable HTTP2 support I'm using the netty backend
+ - `fs2` is the streaming library in typelevel, running on IO, and i'm using this for my tile server as i'll describe shortly
 
 ---
-## "Deep" cancellation: from `RST_STREAM` to `Statement#cancel()` 
+## **http4s** app using **tapir** interpreter 🌐
+[.code-highlight: 1]
+[.code-highlight: 2]
+[.code-highlight: 3-7]
+[.code-highlight: 8]
+[.code-highlight: 9-25]
+[.code-highlight: 1-25]
+
+```scala
+class I18nHttpApp extends IOApp.Simple with I18nEndpoints:
+  def run: IO[Unit] =
+    val appResource =
+      for
+        given I18nService <- BabelBasedI18nService().toResource
+        _ <- server
+      yield ()
+    appResource.useForever
+
+  private def server(using i18nService: I18nService): Resource[IO, Server] =
+    val interpreter = Http4sServerInterpreter[IO]()
+    val serverLogic = i18n.serverLogicSuccess: language =>
+      i18nService.translationsForLanguage(language)
+    val routes = interpreter.toRoutes(serverLogic)
+    val equippedRoutes = middlewareStack(routes)
+    NettyServerBuilder[IO]
+      .bindHttp(8080, "0.0.0.0")
+      .withHttpApp(equippedRoutes)
+      .resource
+
+  private def middlewareStack(routes: HttpRoutes[IO]): HttpApp[IO] = ???
+```
+
+^ - here for the sake of simplicity we only implement the internationalization endpoint
+ - it's a cats-effect IOApp, we mix in the endpoints definition
+ - the entrypoint is the run method
+ - we first define the app resource, it needs an internationalization service, for which I am using a small nice library called Babel, hence the name
+ - then we say that we'll use this app resource forever, that is until program termination
+ - here's how we define the server
+ - we get an interpreter for tapir definitions
+ - we use tapir dsl to define the endpoint server logic
+ - we get the http4s routes for this endpoint
+ - then we decorate the routes with all kinds of middleware, more on that shortly
+ - then we can wire our server using the netty implementation 
+
+---
+## Rich middleware 🧰
+
+```scala
+private def middlewareStack(routes: HttpRoutes[IO]): HttpApp[IO] =
+  CORS.policy.withAllowOriginAll.withAllowMethodsAll
+    .withAllowHeadersAll(
+      ResponseTiming(
+        Date.httpApp(
+          GZip(
+            Logger
+              .httpRoutes(
+                logHeaders = true,
+                logBody = false,
+                logAction = Some(Console[IO].print)
+              )(KamonSupport(routes, "localhost", 8080))
+              .orNotFound
+          )
+        )
+      )
+    )
+```      
+
+^ - All kinds of middleware is available and of course you can define your own
+- Intercepts requests and responses
+- CORS, Timing, Dating, GZIP, logging, kamon, etc.
+
+---
+## Tile server 🗺️
+
+![inline autoplay loop](cancellations.mp4)
+
+^ - ok with this video i'm going to give you a headache
+ - remember i told you i needed a tile server
+ - Basically to create an interactive map navigation experience, maplibre is constantly issuing GET tile request over HTTP2
+ - If you typically zoom in and out in quick succession, it's also able to cancel them, which you see on the right
+
+---
+## **Deep** cancellation: from `RST_STREAM` to `Statement#cancel()` 
 
 ```mermaid
 %%{init: {'theme':'forest'}}%%
@@ -779,9 +863,19 @@ sequenceDiagram
 
 ```
 
+^ - this sequence diagram shows the interaction between maplibre all the way into the DB
+ - 1. so the tile request gets to the application load balancer over https
+ - 2. AWS load balancer has a built-in certificate, you don't need to manage it so it's very convenient to have termination here
+ - 3. the title request is forwarded to a server instance via HTTP1
+ - 4. on the instance, i have an envoy proxy sidecar to upgrade http1 back to http2
+ - the reason i'm doing this is to allow for TCP connection termination
+ - 5. we use a specific postgis function to retrieve a tile in binary format
+ - 6. this is all done in streaming fashion, and if we get a RST_STREAM on the HTTP2 connection cancellation can propagate all the way into the database 
 
 ---
-## Tile Streaming from DB
+## `fs2` and `doobie` to **stream** from DB 🌊
+[.code-highlight: 1-9]
+[.code-highlight: 10-13]
 
 ```scala
 def layerTileQuery(layer: LayerRef, zoom: Int, x: Int, y: Int): fs2.Stream[ConnectionIO, Array[Byte]] =
@@ -793,29 +887,44 @@ def layerTileQuery(layer: LayerRef, zoom: Int, x: Int, y: Int): fs2.Stream[Conne
     FROM mvt_geom
   """
   query.query[Array[Byte]].stream
-```  
 
-execute within IO 
-
-```scala
   def layerTile(layer: LayerRef, zoom: Int, x: Int, y: Int)(using xa: Transactor[IO]): fs2.Stream[IO, Byte] =
     layerTileQuery(layer, zoom, x, y).transact(xa).flatMap(fs2.Stream.emits)
-```
+
+```  
+
+^ - we are defining here a stream of chunks of bytes forming up the tile
+ - this is the sql query, abridged
+ - we use doobie DSL to define what is called an SQL fragment
+ - we indicate we want to stream it
+ - the layerTile function interprets it on IO using the transactor, this represents our DB connection
+ - now we get a stream of bytes that we can feed into the HTTP response
+
+---
+## **Route** definition with `http4s` 🛣️ 
+[.code-highlight: 1-2]
+[.code-highlight: 3-12]
 
 ```scala
 case GET -> Root / LocationSlugVar(slug) / "metrics" / MetricLayerIDVar(metricLayerID) / 
     LongVar(v) / IntVar(z) / IntVar(x) / IntVar(y) =>
   Ok(
     service.layerTile(LayerRef(slug, metricLayerID), z, x, y)
-      .onFinalizeCase {
+      .onFinalizeCase:
         case ExitCase.Canceled =>
           logger.info(s"Cancelled streaming tile for $metricLayerID v$v $z/$x/$y")
         case _ => () // other cases elided
-      },
+      ,
     contentTypeHeader,
     cacheControlHeader
   )
 ```
+
+^ - this is precisely how we wire this tiling endpoint
+ - we use http4s DSL for defining the route
+ - then we wire the function we saw earlier, notice how http4s directly accepts an fs2 stream as a response
+ - therefore, cancellation resulting from connection termination will also transparently work throughout the stream chain
+
 
 <!-- ---
 ## Internationalization
@@ -875,19 +984,26 @@ def apply(): IO[I18nService] =
   )
 ```  
 
-^ - Show of hands: who, like me, suffer from YAML alergy? instant red eyes for detecting spaces, headaches, etc.
+^ - So how do we package our server now? for this I'm using a sbt plugin, sbt-jib. You can define all kind of properties, base image, etc. 
+- One thing worth mentionning here is how I package the client, you can see that I pick the output of the vite build and put it into public, quite simply
+- For static files, I actually use http4s itself, not a separate server
+- Ok, clearly building the container isn't the end of the story, we need to deploy that stuff
+- Oh darn, will I have to touch some YAML?  
+- Show of hands: who, like me, suffer from YAML alergy? instant red eyes for detecting spaces, headaches, etc.
  - I have some good news!  
 
 ---
-## Besom & pulumi: deployment superpowers 🦸
-[.code-highlight: 1]
-[.code-highlight: 2-7]
-[.code-highlight: 8]
-[.code-highlight: 9]
-[.code-highlight: 1-9]
-Scala for Ops! 🏭
+## **Scala**4**Ops**: besom & pulumi 🏭
+[.code-highlight: 1-4]
+[.code-highlight: 5-11]
+[.code-highlight: 12]
+[.code-highlight: 13]
+[.code-highlight: 1-20]
 
 ```scala
+import besom.*
+import ...
+
 @main def main: Unit = Pulumi.run:
   given Input[EcsConfig] = config.require("ecsConfig")
   given Input[Networking] = config.require("networking")
@@ -895,12 +1011,23 @@ Scala for Ops! 🏭
   given Input[DatabaseConfig] = DatabaseConfig(config.require[RawDatabaseConfig]("dbConfig"))
   given Input[ContainerImage] =
     config.require[NonEmptyString]("ecrUrl").zip(config.require[NonEmptyString]("appVersion")).map(ContainerImage.apply)
-  val service = Service("exomap-patcher")
+  val service: Output[Service] = Service("exomap")
   Stack(service).exports(fargateUrn = service.fargate.urn)
 ```
+ > "I suddenly felt an infra superman" 🦸
+-- long-time coder and YAML alergic 
+
+^ - Witness here a standard Scala program
+ - This is a program that will deploy our server
+ - It's only the entry point, but we can already explore a few concepts
+ - The most relevant import is besom of course, the fantastic pulumi driver from virtus lab
+ - The first line shows that we are defining a pulumi program
+ - Config is a big thing in infra, we start by initializing a number of config givens with various values. Enumerate
+ - This constructor creates a Service component, this is a custom kind of generic service component that I defined in a separate file, where the necessary infra for AWS fargate is done etc. It's using all these givens. We get a component wrapped in an `Output` monad, that's besom's main abstraction for things that need to exist in the infra space at the end of the program.
+ - At the end, `Pulumi.run` expects a `Stack` instance, with all the outputs we have provisioned. We can also export some particular values: these can be reused in other stacks.
 
 ---
-## **How** does it work?
+## Ok, but **how** does it work?
 
 ```mermaid
 %%{init: {'theme':'forest'}}%%
@@ -934,39 +1061,64 @@ program-->execution
 infraProgram-->lib
 githubWorkflow-->cli
 cli-->besom
-execution-->cloud
 execution-->providers
+execution-->cloud
 ```
+
+^ - We have our program, written in Scala using the Besom SDK
+ - We create a github workflow, which makes use of the Pulumi CLI
+ - The pulumi CLI has a plugin that can interpret besom programs
+ - Running the program makes use of providers to drive the actual provisioning
+ - It also keeps a state in the Pulumi cloud, which is a paid service, or your own storage, like S3 
+
 ---
-## Pulumi cloud dashboard
+## Pulumi cloud **dashboard**
 
 ![inline](pulumi-stack-graph.png)
 
----
-## Pulumi PR previews
-
-Show github previews
+^ - If you pay for the pulumi cloud offering, you get a nice dashboard where you can see all your stacks, resources, etc.
 
 ---
-## Pulumi **ESC** 
+## Pulumi PR **previews**
 
-- *Environments, Secrets, and Configuration*: secure 🔒 repository for static and dynamic config values and secrets
+![inline](pulumi_preview.png)
+
+^ - What's cool is also the previewing ability, essentially what will change if you merge your PR
+
+---
+## Pulumi **ESC** 🔒 
+
+- *Environments, Secrets, and Configuration*: secure repository for static and dynamic config values and secrets
 - Can import values from stacks, supports plugins (e.g. AWS Secret Manager)
 - YAML structure, VS code integration
 
+^ - As mentioned earlier, a big operational challenge is how to manage secrets and configuration values 
+ - Pulumi has a worthy complement for that, it's called ESC
+ - Stands for ...
+ - Yeah sorry we're back to some YAML after all, but really minimal, no template programming 
+
 ---
-## Pulumi ESC 
+## Pulumi **ESC** 🔒
+[.column]
+
+![inline 100%](esc_explorer.png)
+
+![inline](vscode.png) integration
+
+[.column]
 
 ```yaml
-...
-  pulumiConfig:
-    aws:region: ${aws.region}
-    ecsConfig: ${ecs}
-    ecrUrl: ${stackRefs.domainInfra.ecrUrlForPatcher}
-    dbConfig: ${db}
-    datadogConfig: ${datadog}
-    networking: ${networking}
+pulumiConfig:
+  aws:region: ${aws.region}
+  ecsConfig: ${ecs}
+  ecrUrl: ${stackRefs.domainInfra.ecrUrlForPatcher}
+  dbConfig: ${db}
+  datadogConfig: ${datadog}
+  networking: ${networking}
 ```    
+
+key/value YAML
+(but no templates) 😉
 
 ---
 ## `/infra/.../build.sbt` structure
@@ -990,3 +1142,19 @@ class core mediumBrown
 class app lightBrown
 class shared lightYellow
 ```
+
+^ - You can use the Scala CLI
+ - Or sbt, which is what I'm doing, with multiple projects sharing some assets such as types 
+ - Yes I'm using iron for besom programs too :)
+ - You can publish libraries, possibilities are endless 
+
+---
+## Take-away 🍔
+ - 🦸 You *really* can do everything with Scala
+ - ♦️ Compact, efficient, uniform codebase from front to back plus ops
+ - 🧑‍🤝‍🧑 Great for tight-knit teams or solo players
+ 
+^ - I hope i was able to give you a taste of what full-stack scala feels like
+
+---
+![](final_slide.png)
