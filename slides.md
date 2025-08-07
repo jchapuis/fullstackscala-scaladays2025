@@ -45,7 +45,7 @@ autoscale: true
  - the codebase as a whole is leaner. benefit from code sharing between front and back, and from Scala's expressiveness. No more huge quantities of teraform YAML, helm charts, API definitions, etc.
  - third-party library surface and ecosystem is also naturally reduced. Less update work, less possibilities for unwanted regression, etc.
  - scalajs library ecosystem, laminar in particular, is super powerful and allows for richly interactive experiences
- - some say webassembly is the future for many applications, imagine doing AI in the browser for privacy etc.
+ - some say webassembly is the future for many applications, scalajs is ideally suited for that, imagine doing AI in the browser for privacy etc.
 
 <!-- ---
 ## But...I'm a __backend__ engineer, period!
@@ -66,9 +66,9 @@ autoscale: true
 - After 7 years of backend & microservices about 🚐 and 🚗
 - Let's plant some 🌳! 
 
-^  - I've spent 7 years building microservices for the Bestmile fleet orchestration platform here in Lausanne
- - I'm very sensitive to the impact of what we build
- - I was approached to build a geospatial decision support system for urban renaturation, so I decided ok let's give it a go  
+^ - BULLETS  
+ - I've spent 7 years building microservices for the Bestmile fleet orchestration platform here in Lausanne
+ - I'm very eco-sensitive, and I was approached to build a geospatial decision support system for urban renaturation, so I decided ok let's give it a go  
 
 ---
 
@@ -114,7 +114,7 @@ class roott limeGreen
 ^ - In this shared project, we mainly find
 - endpoint definitions using tapir algebra, that's how we define our API, this is great to align client and server, more about this on the next slide
 - model contains all the data classes of the API, together with serialization aspects
-- i18n i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation 
+- internationalization i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation. Because it's so hard to pronounce i kind of regret it now aha 
 
 ---
 ## `tapir` endpoint definitions ![inline](tapir_logo.png)
@@ -186,6 +186,7 @@ case class PopupLabels(computing: String, parcel: String) derives ReadWriter
  - 🔗 relaxed versioning
 
 ^ - here are the data classes involved in this endpoint
+ - BULLETS
  - use the typeclass derivation syntax of Scala 3 for codecs
  - since it's in a shared project between front and back, single definition
  - also thanks to our particular setup where frontend and backend are coupled, we can be more relaxed about versioning. 
@@ -300,7 +301,8 @@ import scalaJSPlugin from "@scala-js/vite-plugin-scalajs";
  - Just a standard Scala app with a `main`
  - Inject Laminar-managed root node in `<app>` element in `index.html`'s `<body>`
 
-^ - But, what is actually a scalajs app, you might ask? 
+^- But, what is actually a scalajs app, you might ask? 
+ - BULLETS
  - well, it's just a standard scala app with a main method
  - make use of laminar's renderOnDomContentLoaded() which hooks laminar root element to an app DOM element in index.html
 
@@ -397,8 +399,7 @@ def applyChangesButton = button("Apply changes",
 - this is here a method that registers an event listener which will log the mouse button
 - kind of underwhelming I know
 - the problem with buttons is that they are often domain-specific
-- so in order to continue speaking about laminar arrows, let's look at an orthogonal concern universal to all UI applications
-- internationalization
+- so in order to continue speaking about laminar arrows, let's keep looking at an orthogonal concern universal to all UI applications, internationalization (and keep the prononciation challenge)
 
 ---
 ## Internationalization 🌐
@@ -446,9 +447,10 @@ trait LocaleState:
 
 ^ - LocaleState is a trait, that has a currentTranslations laminar Var 
 - This Laminar Var is not to be confused with scala's var
-- it contains all labels for a certain language
 - the Var represents mutable state that can be observed
- - from this var, we can derive a signal that allow us to subscribe to changes, as we have seen just before
+- it contains all labels for a certain language
+- BULLET
+- from this Var, we can derive a signal that allow us to subscribe to changes, as we have seen just before
 
 ---
 
@@ -509,7 +511,7 @@ sequenceDiagram
 [^1]: Simplified view, for more check out [laminar docs](https://laminar.dev/documentation#laminars-use-of-airstream-ownership)
 
 ^  - let's look at this in more detail
- -	activate(): when the element is mounted in the DOM, it gets an owner, which tracks its subscriptions. Activate is called on this owner
+ -	activate(): when the element is mounted in the DOM, it gets an Owner, which tracks its subscriptions. Activate is called on this Owner
   - let's say we have signal, like this internationalization signal
 	-	subscribe(callback): we are subscribing to the signal, which gives us an Observer
 	-	signal calls onNext on our observer every time the signal updates
@@ -586,9 +588,9 @@ sequenceDiagram
 ^ - switch in flatMapSwitch means that the stream mirrors the inner stream
   - let's say there is a language menu, when there is an "fr" event, launch an inner stream which retrieves the french translations via the internationalization service. In the implementation that I have, this is an async call to the API, which is represented as a stream
   - when we get the translations, we set the locale
-  - because this is also a stream, we might get updates from the backend
+  - because this is also a stream, if we implement polling for instance, we might get updates from the backend
   - later on, if we switch to english, there is another event on the parent stream, we switch to the new inner stream, the english stream  
-  - note that events propagate through the observer graph: so when we set the current translations in locale, this is a Var, and it will trigger other events downstream, such as updating the button label as we coded before
+  - note that events propagate further through the observer graph: so when we set the current translations in locale, this is a Var, and it will trigger other events downstream, such as updating the button label as we coded before
 
 ---
 ## Behavior ⚙️ unit coverage ✅
@@ -700,6 +702,7 @@ class ReduxBehavior[Action, State, Effect](
  - Can replicate redux pattern for more complex processes in your app, you know, piecewise
  - This piece of code is a fully functional Redux implementation
  - Not delving into the details here but it's just to illustrate how flexible this is
+ - SHOW ALL CODE
  - I personally find Redux useful to define behavior with a strict state machine, when interactions become complex
  - I'm actually using this for an editor component in the app that has a lot of state and possible interactions
 
@@ -796,7 +799,7 @@ class ApiClientBasedI18Service extends I18nService with I18nEndpoints:
 - now in terms of its actual implementation, you'll also remember we defined endpoints with tapir
 - so our implementation mixes in the endpoint definition so that 
 - we can "interpret" it using sttp http client, using a fetch backend
-- we could also use polling, to allow for translation updates pushed from the backend, it's a stream here
+- we could also implement polling with a scheduler, to allow for translation updates pushed from the backend, it's a stream here
 
 --- 
 ## Backend: typelevel stack 🐱 
@@ -1227,11 +1230,14 @@ class shared lightYellow
  - 🥲 Programming joy FTW
  
 ^ - I hope i was able to give you a taste of what full-stack scala feels like
- - , AI age calls for generalists  
+  - Yes, you really can do it all in Scala
+  - Leads to compact...
+  - Great for product teams, it promotes alignment, or solo players, you master one stack
+  - As a motivation, you know AI age calls for generalists
+  - Last but not least, it's also about enjoying what we do  
 
 ---
 ![](final_slide.png)
 
-^ - time for thanks
-- special thanks to the scala community and library authors and contributors that make this joy of coding possible day-to-day
-- thank you for your attention, comments and questions 
+^ - so on this, i would like to give special thanks library authors and contributors that make this joy of coding possible day-to-day, and to the scala community at large
+- thank you all for your attention, comments and questions 
