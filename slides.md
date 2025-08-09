@@ -9,10 +9,12 @@ autoscale: true
 
 ![](title_full_wide.png)
 
-^ Wait, full-stack Scala? do you mean full-stack, as in including the front-end?
+^ - Welcome everyone to this talk about full-stack Scala 
 
 ---
 ## What? _**front-end**_ in Scala? 😮 
+
+^ - Wait, full-stack Scala? you mean full-stack, as in including the front-end?
 
 ---
 ## What? _**front-end**_ in Scala? 
@@ -25,8 +27,8 @@ autoscale: true
 ## Cool, but what **for**? 🤔
 
 ^ - when I say this, I usually get "ok that's cool, but who does that?"
-- this is a tough one, you know, people are afraid of non-mainstream tech
-- part of the reason i'm here talking, to show 
+- this is a tough one, you know, this is not yet mainstream 
+- this is the main reason i'm here talking, to show 
 - 1. that it's really possible and
 - 2. there are even advantages to do everything in Scala, because...
 
@@ -34,14 +36,12 @@ autoscale: true
 ## Who _**wouldn't**_ want... 🤩
 
  - 🧑‍🤝‍🧑 _Type-based_ team alignment
- - 🦺 Higher bus factor 
  - 🔹 Smaller & leaner codebase
  - 👣 Reduced overall dependency surface
  - 💄 Cutting-edge UX
  - 🚀 WASM performance with flawless interop
  
-^  - the entire team is able to intervene on all the parts, front-end, back-end, infra. They exchange in an ubiquitous language based on the same rich types.
- - thanks to this, loss of a team member is less detrimental, others can step in more easily, compare that vs having a teraform specialist, a typescript specialist, etc.
+^  - the entire team is able to intervene on all the parts, front-end, back-end, infra. operationaly this is efficient. This encourages collective awareness of the whole project. Team can exchange in an ubiquitous language based on the same rich types. 
  - the codebase as a whole is leaner. benefit from code sharing between front and back, and from Scala's expressiveness. No more huge quantities of teraform YAML, helm charts, API definitions, etc.
  - third-party library surface and ecosystem is also naturally reduced. Less update work, less possibilities for unwanted regression, etc.
  - scalajs library ecosystem, laminar in particular, is super powerful and allows for richly interactive experiences
@@ -66,7 +66,8 @@ autoscale: true
 - After 7 years of backend & microservices about 🚐 and 🚗
 - Let's plant some 🌳! 
 
-^ - BULLETS  
+^ - A bit about my journey
+ - BULLETS  
  - I've spent 7 years building microservices for the Bestmile fleet orchestration platform here in Lausanne
  - I'm very eco-sensitive, and I was approached to build a geospatial decision support system for urban renaturation, so I decided ok let's give it a go  
 
@@ -114,7 +115,7 @@ class roott limeGreen
 ^ - In this shared project, we mainly find
 - endpoint definitions using tapir algebra, that's how we define our API, this is great to align client and server, more about this on the next slide
 - model contains all the data classes of the API, together with serialization aspects
-- internationalization i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation. Because it's so hard to pronounce i kind of regret it now aha 
+- internationalization i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation. Well I didn't know how hard it is to pronounce when I made this choice however aha 
 
 ---
 ## `tapir` endpoint definitions ![inline](tapir_logo.png)
@@ -166,6 +167,7 @@ object Language extends RefinedType[String, Match["^(en|fr|de|es|it)$"]]
 
 ^ - I mentionned refined types
 - In the system, the `Language` is such a refined type, we want a two char language code, and we only support certain languages. 
+ - BULLET
  - We use the iron library to define a refined newtype. This is a regex to match only certain language codes, at the type level. 
 - so literals will fail at compile time, but also since we're using the iron module for tapir, API will automatically reject requests that do not comply, which is very convenient
 - more typical use case might be email address, or strictly positive numbers, etc. all kinds of constraints are possible 
@@ -268,7 +270,7 @@ import scalaJSPlugin from "@scala-js/vite-plugin-scalajs";
 }
 ```
 
-^ as you can see, not looking at the details of this, but we even end up with a package.json in our scala project, which is kind of funny 
+^ another proof of that is the presence of a package.json file in our scala project, which is kind of funny 
 
 ---
 
@@ -449,8 +451,9 @@ trait LocaleState:
 - This Laminar Var is not to be confused with scala's var
 - the Var represents mutable state that can be observed
 - it contains all labels for a certain language
-- BULLET
+- BULLET 
 - from this Var, we can derive a signal that allow us to subscribe to changes, as we have seen just before
+- BULLET BULLET
 
 ---
 
@@ -538,7 +541,9 @@ sequenceDiagram
 [^1]: Simplified view, for more check out [laminar docs](https://laminar.dev/documentation#laminars-use-of-airstream-ownership)
 
 ^ - when the button is unmounted from the DOM 
- - it calls	deactivate() → kill() → unsubscribe: tears down the observer on unmount
+ - deactivate() is called on the owner
+ - owner in turn calls kill() on the observer
+ - observer can then unsubscribe
  - let's now show a bit the kind of expressive power we gain with signals
 
 ---
@@ -586,9 +591,11 @@ sequenceDiagram
 `currentLanguage$` __*flatMapSwitch*__ `i18nService.translations` `-->` `locale.currentTranslations`
 
 ^ - switch in flatMapSwitch means that the stream mirrors the inner stream
-  - let's say there is a language menu, when there is an "fr" event, launch an inner stream which retrieves the french translations via the internationalization service. In the implementation that I have, this is an async call to the API, which is represented as a stream
+  - let's say there is a language menu, when we set the language to french
+  - there is an "fr" event on the currentLanguage stream. 
+  - flatmapswitch launches an inner stream which retrieves the french translations via the internationalization service. In the implementation that I have, this is an async call to the API, represented as a stream
   - when we get the translations, we set the locale
-  - because this is also a stream, if we implement polling for instance, we might get updates from the backend
+  - notice that this is also a stream, so if we implement polling in the service for instance, we might get updates from the backend
   - later on, if we switch to english, there is another event on the parent stream, we switch to the new inner stream, the english stream  
   - note that events propagate further through the observer graph: so when we set the current translations in locale, this is a Var, and it will trigger other events downstream, such as updating the button label as we coded before
 
@@ -662,7 +669,7 @@ SettingsPanel --> i18nBehavior : emit events
  - 2. what i called behavioral logic listens to signals
  - 3. it might set elements of state, which in reaction might trigger other signals, etc.
  - 4. Then you have what I call UI components: these components are relatively generic and also have elements of state that are local to the component
-  - 5. behaviors describe how global state is wired to local state via signals when mounted
+  - 5. behaviors describe how local state is wired to global state via signals when mounted
   - 6. and vice/versa, describes how events influence evolution of global state
  - In summary, what i call behaviors act a bit as a switchboard   
  - Application state you potentially save in local storage or on the server, local state is ephemeral
@@ -1057,11 +1064,11 @@ def apply(): IO[I18nService] =
 - For static files, I actually use http4s itself, not a separate server
 - But ok, clearly building the container isn't the end of the story, we need to deploy that stuff
 - Oh darn, will I have to touch some YAML?  
-- Show of hands: who, like me, suffer from YAML alergy? instant red eyes for detecting spaces, headaches, etc.
+- Show of hands: who, like me, suffer from YAML alergy? red eyes from detecting significant space, typos and all kinds of template special chars 
  - I have some good news!  
 
 ---
-## **Scala**4**Ops**: besom & pulumi 🏭
+## **Scala *4* Ops** with ![inline](pulumi_logo.png) & ![inline](besom_logo.png) 
 [.code-highlight: 1-20]
 [.code-highlight: 1-3]
 [.code-highlight: 4]
@@ -1084,8 +1091,6 @@ import ...
   val service: Output[Service] = Service("exomap")
   Stack(service).exports(fargateUrn = service.fargate.urn)
 ```
- > "I suddenly felt an infra superman" 🦸
--- long-time coder and YAML alergic 
 
 ^ - Witness here a standard Scala program
  - This is a program that will deploy our server
@@ -1094,6 +1099,52 @@ import ...
  - Config is a big thing in infra, we start by initializing a number of config givens with various values. Enumerate
  - This constructor creates a Service component, this is a custom kind of generic service component that I defined in a separate file, where the necessary infra for AWS fargate is done etc. It's using all these givens. We get a component wrapped in an `Output` monad, that's besom's main abstraction for things that need to exist in the infra space at the end of the program.
  - At the end, `Pulumi.run` expects a `Stack` instance, with all the outputs we have provisioned. We can also export some particular values: these can be reused in other stacks.
+
+--- 
+ > "I suddenly felt an infra superman" 🦸
+-- long-time coder and YAML alergic 
+
+[.code-highlight: 1-3]
+[.code-highlight: 4-6]
+[.code-highlight: 6-20]
+
+ ```scala
+import besom.*
+import besom.api.awsx.ecs.*
+import besom.api.awsx.ecs.inputs.*
+
+object Service:
+  def apply(name: NonEmptyString)(using image: Input[ContainerImage], ...): Output[FargateService] = 
+    val serviceContainer = TaskDefinitionContainerDefinitionArgs(s"$name-container",
+        image = image.imageRef,
+        // ...
+    )
+
+    val serviceTask = FargateTaskDefinition(s"$name-service-definition", 
+      FargateTaskDefinitionArgs(container = Some(serviceContainer)), //...)
+
+    // ...
+
+    FargateService(taskDefinition = serviceTask.taskDefinition.arn, ///...)
+ ```
+
+^ - just a quick look inside of this service constructor, to give you a taste
+ - our imports are more precise here, we are importing pulumi's aws provider
+ - this is really a constructor for a generic fargate service, you could do that for kube also of course
+ - all resources always have a name, which is used in pulumi state, so we accept our service name here
+ - then we create and assemble sub-resources, you can see here the service container, then the task definition, and finally the service instanciation itself
+
+--- 
+## ![inline](pulumi_logo.png) & ![inline](besom_logo.png) 
+
+ - **Pulumi**: *OSS* infrastructure-as-code platform.   
+ - **Besom**: Pulumi SDK for Scala.
+
+^ - Pulumi is open-source, you can run it yourself or pay for hosted service from the corresponding company
+ - Its own providers or can piggyback on terraform's
+ - they have a good startup program btw.
+ - Scala isn't officially supported by Pulumi, but thanks to folks at virtus lab we have besom
+ - Scala dependencies generated and published for all the providers
 
 ---
 ## Ok, but **how** does it work?
@@ -1233,11 +1284,11 @@ class shared lightYellow
   - Yes, you really can do it all in Scala
   - Leads to compact...
   - Great for product teams, it promotes alignment, or solo players, you master one stack
-  - As a motivation, you know AI age calls for generalists
+  - As extra motivation to try your hand at something different, as you know AI age calls for generalists, so now it's a good moment to become one
   - Last but not least, it's also about enjoying what we do  
 
 ---
 ![](final_slide.png)
 
-^ - so on this, i would like to give special thanks library authors and contributors that make this joy of coding possible day-to-day, and to the scala community at large
-- thank you all for your attention, comments and questions 
+^ - so on this, i would like to give special thanks library authors and contributors that make this joy of coding in Scala possible day-to-day, and to the scala community at large of course
+- thank you all for your attention, comments and questions welcome
