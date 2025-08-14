@@ -45,7 +45,7 @@ autoscale: true
  - the codebase as a whole is leaner. benefit from code sharing between front and back, and from Scala's expressiveness. No more huge quantities of teraform YAML, helm charts, API definitions, etc.
  - third-party library surface and ecosystem is also naturally reduced. Less update work, less possibilities for unwanted regression, etc.
  - scalajs library ecosystem, laminar in particular, is super powerful and allows for richly interactive experiences
- - some say webassembly is the future for many applications, scalajs is ideally suited for that, imagine doing AI in the browser for privacy etc.
+ - some say webassembly is the future for many applications, scalajs is ideally suited for that, imagine doing AI in the browser for privacy-sensitive applications etc.
 
 <!-- ---
 ## But...I'm a __backend__ engineer, period!
@@ -115,7 +115,7 @@ class roott limeGreen
 ^ - In this shared project, we mainly find
 - endpoint definitions using tapir algebra, that's how we define our API, this is great to align client and server, more about this on the next slide
 - model contains all the data classes of the API, together with serialization aspects
-- internationalization i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation. Well I didn't know how hard it is to pronounce when I made this choice however aha 
+- internationalization i mention this here specifically because i'll use this common use case as guiding example thread throughout this presentation. What I didn't know when I made this choice is how hard it is to pronounce
 
 ---
 ## `tapir` endpoint definitions ![inline](tapir_logo.png)
@@ -129,11 +129,12 @@ class roott limeGreen
 [.code-highlight: 1-14]
 
 ^ - So this is how you define endpoints with tapir
-- of course starting with imports, including a module for micropickle, which we'll use for JSON serialization
+- of course starting with imports. tapir, and also including a module for micropickle, which we'll use for JSON serialization
+- import data classes
 - we also use iron for refined types, as we'll see shorty 
 - we use a trait for our definitions, this keeps aspects separate and allows for mixins
-- This is the endpoint that allows for retrieving translations. We express it with tapir DSL, with a path parameter of type Language, we'll see in a second how this is defined. I take this example because it's simple, and kind of universal to apps.
-- we specify the types of response, micropickle codec is picked up by tapir
+- This is the endpoint that allows for retrieving translations. We express it with tapir DSL, with a path parameter of type Language. 
+- we specify the type of response, micropickle codec is picked up by tapir
 - finally we can even specify endpoint documentation
 
 ```scala
@@ -192,8 +193,8 @@ case class PopupLabels(computing: String, parcel: String) derives ReadWriter
  - use the typeclass derivation syntax of Scala 3 for codecs
  - since it's in a shared project between front and back, single definition
  - also thanks to our particular setup where frontend and backend are coupled, we can be more relaxed about versioning. 
- - It's the same codebase, same team, you deploy updates at the same time. You can trigger client reload upon deploy for high availability app. 
- - if you do need to version, one technique is to name these data classes with version numbers  
+ - It's the same codebase, same team, you deploy updates at the same time. 
+ - You can trigger client reload upon deploy for high availability app. 
  - So now that we have defined our endpoints and types, we can move on to creating the client project, the front-end
 
 ---
@@ -401,7 +402,7 @@ def applyChangesButton = button("Apply changes",
 - this is here a method that registers an event listener which will log the mouse button
 - kind of underwhelming I know
 - the problem with buttons is that they are often domain-specific
-- so in order to continue speaking about laminar arrows, let's keep looking at an orthogonal concern universal to all UI applications, internationalization (and keep the prononciation challenge)
+- so in order to continue speaking about laminar arrows, let's keep looking at our orthogonal internationalization example
 
 ---
 ## Internationalization 🌐
@@ -513,7 +514,7 @@ sequenceDiagram
 
 [^1]: Simplified view, for more check out [laminar docs](https://laminar.dev/documentation#laminars-use-of-airstream-ownership)
 
-^  - let's look at this in more detail
+^  - let's look a bit further under laminar's hood to see how this works, what i show here is all internal, don't worry
  -	activate(): when the element is mounted in the DOM, it gets an Owner, which tracks its subscriptions. Activate is called on this Owner
   - let's say we have signal, like this internationalization signal
 	-	subscribe(callback): we are subscribing to the signal, which gives us an Observer
@@ -807,6 +808,18 @@ class ApiClientBasedI18Service extends I18nService with I18nEndpoints:
 - so our implementation mixes in the endpoint definition so that 
 - we can "interpret" it using sttp http client, using a fetch backend
 - we could also implement polling with a scheduler, to allow for translation updates pushed from the backend, it's a stream here
+
+---
+## Let's see it in action! 🐛
+
+![inline autoplay loop](debugger.mp4)
+
+^ - Let see this code in action
+- we can set a breakpoint where the API is called
+- see how when we switch the language, this gets called
+- we see values of local variables
+- if we move up the stack one notch, we see our friend flatmapswitch
+- all this talk of API gets us closer to the backend
 
 --- 
 ## Backend: typelevel stack 🐱 
@@ -1140,11 +1153,11 @@ object Service:
  - **Pulumi**: *OSS* infrastructure-as-code platform.   
  - **Besom**: Pulumi SDK for Scala.
 
-^ - Pulumi is open-source, you can run it yourself or pay for hosted service from the corresponding company
- - Its own providers or can piggyback on terraform's
- - they have a good startup program btw.
+^
+ - BULLET 
+ - Pulumi is open-source, you can run it yourself or pay for hosted service from the corresponding company
+ - BULLET
  - Scala isn't officially supported by Pulumi, but thanks to folks at virtus lab we have besom
- - Scala dependencies generated and published for all the providers
 
 ---
 ## Ok, but **how** does it work?
@@ -1241,7 +1254,8 @@ pulumiConfig:
 key/value YAML
 (but no templates) 😉
 
-^ - see here, all the values under pulumi config will populate our config that we were loading before, here referencing structures defined in other dedicated places in the configuration
+^ - you can see a screenshot of this integration on the left here, you can edit your configuration directly in a secure way
+ - on the right, you see the configuration values under pulumi config that we were loading in our program before, referencing structures defined in other places in the configuration
 
 ---
 ## `/infra/.../build.sbt` structure
@@ -1284,7 +1298,7 @@ class shared lightYellow
   - Yes, you really can do it all in Scala
   - Leads to compact...
   - Great for product teams, it promotes alignment, or solo players, you master one stack
-  - As extra motivation to try your hand at something different, as you know AI age calls for generalists, so now it's a good moment to become one
+  - Scala skills are powerful everywhere, which is great news since I feel the AI age calls for human generalists
   - Last but not least, it's also about enjoying what we do  
 
 ---
