@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 700" width="1500" height="700">
+  <style>
+    .label {
+      font-family: "Fira Code", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      fill: #000;
+    }
+    .strong { font-weight: 700; }
+  </style>
+
+  <defs>
+    <linearGradient id="triangleGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dfecd5" />
+      <stop offset="100%" stop-color="#739856" />
+    </linearGradient>
+    <clipPath id="tri-clip">
+      <polygon points="750,30 50,670 1450,670"/>
+    </clipPath>
+  </defs>
+
+  <!-- Triangle outline -->
+  <polygon points="750,30 50,670 1450,670"
+           fill="url(#triangleGradient)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Horizontal layer dividers (clipped to triangle) -->
+  <g clip-path="url(#tri-clip)">
+    <line x1="0" y1="243" x2="1500" y2="243" stroke="#486E2C" stroke-width="6" />
+    <line x1="0" y1="456" x2="1500" y2="456" stroke="#486E2C" stroke-width="6" />
+  </g>
+
+  <!-- Labels (centered in each layer) -->
+  <!-- Top: EventStream -->
+  <text class="label" x="750" y="140" font-size="36">
+    <tspan class="strong">EventStream[A]</tspan>
+    <tspan x="750" dy="36">can be subscribed to</tspan>
+  </text>
+
+  <!-- Middle: Signal -->
+  <text class="label" x="750" y="350" font-size="36">
+    <tspan class="strong">Signal[A]</tspan>
+    <tspan x="750" dy="36">has a current value</tspan>
+  </text>
+
+  <!-- Base: Var -->
+  <text class="label" x="750" y="570" font-size="36">
+    <tspan class="strong">Var[A]</tspan>
+    <tspan x="750" dy="36">value can be set</tspan>
+  </text>
+
+  <!-- Side arrow with label -->
+  <text class="label" x="150" y="30" font-size="28">capabilities</text>
+  <!-- Vertical line -->
+<line x1="50" y1="50" x2="50" y2="630" stroke="#000" stroke-width="6" />
+
+<!-- Arrowhead path -->
+<path d="M 44 630 L 56 630 L 50 650 Z" fill="#000" />
+</svg>
